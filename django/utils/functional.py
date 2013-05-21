@@ -5,6 +5,11 @@ import sys
 
 from django.utils import six
 
+try:
+    import copyreg
+except ImportError:
+    import copy_reg as copyreg
+
 
 # You can't trivially replace this with `functools.partial` because this binds
 # to classes and returns bound instances, whereas functools.partial (on
@@ -329,18 +334,13 @@ class SimpleLazyObject(LazyObject):
     def __newobj__(cls, *args):
         return cls.__new__(cls, *args)
 
-    def __py3reduce__(self):
-        # On Py3, since the default protocol is 3, pickle uses the
-        # ``__newobj__`` method (& more efficient opcodes) for writing.
-        return (self.__newobj__, (self.__class__,), self.__getstate__())
-
-    if six.PY3:
-        # We can't define this on Py2. If we do, both ``pickle`` & ``cPickle``
-        # blow up with different errors (see regression test). The ``pickle``
-        # variant can be coped with by changing ``__reduce__`` to use
-        # ``SimpleLazyObject.__new__`` instead of ``self.__newobj__``, but
-        # that doesn't placate ``cPickle``.
-        __reduce__ = __py3reduce__
+    def __reduce_ex__(self, proto):
+        if proto >= 2:
+            # On Py3, since the default protocol is 3, pickle uses the
+            # ``__newobj__`` method (& more efficient opcodes) for writing.
+            return (self.__newobj__, (self.__class__,), self.__getstate__())
+        else:
+            return (copyreg._reconstructor, (self.__class__, object, None), self.__getstate__())
 
     # Return a meaningful representation of the lazy object for debugging
     # without evaluating the wrapped object.
