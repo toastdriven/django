@@ -323,15 +323,24 @@ class SimpleLazyObject(LazyObject):
             self._setup()
         return self._wrapped.__dict__
 
-    # Python 3.3 will call __reduce__ when pickling; these methods are needed
-    # to serialize and deserialize correctly. They are not called in earlier
-    # versions of Python.
+    # Python 3.3 will call __reduce__ when pickling; this method is needed
+    # to serialize and deserialize correctly.
     @classmethod
     def __newobj__(cls, *args):
         return cls.__new__(cls, *args)
 
-    def __reduce__(self):
+    def __py3reduce__(self):
+        # On Py3, since the default protocol is 3, pickle uses the
+        # ``__newobj__`` method (& more efficient opcodes) for writing.
         return (self.__newobj__, (self.__class__,), self.__getstate__())
+
+    if six.PY3:
+        # We can't define this on Py2. If we do, both ``pickle`` & ``cPickle``
+        # blow up with different errors (see regression test). The ``pickle``
+        # variant can be coped with by changing ``__reduce__`` to use
+        # ``SimpleLazyObject.__new__`` instead of ``self.__newobj__``, but
+        # that doesn't placate ``cPickle``.
+        __reduce__ = __py3reduce__
 
     # Return a meaningful representation of the lazy object for debugging
     # without evaluating the wrapped object.
