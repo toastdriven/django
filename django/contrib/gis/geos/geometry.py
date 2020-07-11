@@ -108,6 +108,20 @@ class GEOSGeometryBase(GEOSBase):
         self._post_init()
         self.srid = srid
 
+    @property
+    def __geo_interface__(self):
+        """
+        Returns a read-only representation of the geometry, for convenient
+        interoperability with other geodesy packages.
+        """
+        if not self.has_cs:
+            return None
+
+        return {
+            "type": self.geom_type,
+            "coordinates": self.coord_seq,
+        }
+
     @classmethod
     def _from_wkb(cls, wkb):
         return wkb_r().read(wkb)

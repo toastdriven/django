@@ -1443,3 +1443,16 @@ class GEOSTest(SimpleTestCase, TestDataMixin):
         ls[:] = []
         with self.assertRaises(IndexError):
             next(it)
+
+    def test_geo_interface(self):
+        # Only the first three have equivalents in the spec.
+        for g in self.geometries.json_geoms[:3]:
+            geom = GEOSGeometry(g.wkt)
+            # Loading jsons to prevent decimal differences
+            expected_data = json.loads(g.json)
+            geo_inter = geom.__geo_interface__
+            self.assertEqual(expected_data["type"], geo_inter["type"])
+            self.assertEqual(
+                expected_data["coordinates"],
+                geo_inter["coordinates"]
+            )
